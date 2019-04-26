@@ -25,7 +25,12 @@ variable "use_route53" {
   default     = true
   description = "Indicate whether or not to enable route53"
 }
-
+variable "create_elb_nlb" {
+  default = true
+}
+variable "create_elb_alb" {
+  default = false
+}
 variable "use_tcp_routes" {
   default     = true
   description = "Indicate whether or not to enable tcp routes and elbs"

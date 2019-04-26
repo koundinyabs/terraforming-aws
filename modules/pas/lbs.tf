@@ -31,17 +31,19 @@ resource "aws_security_group" "web_lb" {
 
 resource "aws_lb" "web" {
   name                             = "${var.env_name}-web-lb"
-  load_balancer_type               = "network"
+  load_balancer_type               = "${var.create_elb_alb ? "application" : "network"}"
   enable_cross_zone_load_balancing = true
   internal                         = "${var.internetless}"
   subnets                          = ["${var.public_subnet_ids}"]
+  security_groups                   = ["${var.create_elb_alb  ? aws_security_group.web_lb.id : "" }"]
+
 }
 
 resource "aws_lb_listener" "web_80" {
   load_balancer_arn = "${aws_lb.web.arn}"
   port              = 80
   protocol          = "TCP"
-
+  count             = "${var.create_elb_nlb ? 1 : 0}"
   default_action {
     type             = "forward"
     target_group_arn = "${aws_lb_target_group.web_80.arn}"
@@ -52,7 +54,7 @@ resource "aws_lb_listener" "web_443" {
   load_balancer_arn = "${aws_lb.web.arn}"
   port              = 443
   protocol          = "TCP"
-
+  count             = "${var.create_elb_nlb ? 1 : 0}"
   default_action {
     type             = "forward"
     target_group_arn = "${aws_lb_target_group.web_443.arn}"
@@ -64,7 +66,7 @@ resource "aws_lb_target_group" "web_80" {
   port     = 80
   protocol = "TCP"
   vpc_id   = "${var.vpc_id}"
-
+  count    = "${var.create_elb_nlb ? 1 : 0}"
   health_check {
     protocol = "TCP"
   }
@@ -75,7 +77,7 @@ resource "aws_lb_target_group" "web_443" {
   port     = 443
   protocol = "TCP"
   vpc_id   = "${var.vpc_id}"
-
+  count    = "${var.create_elb_nlb ? 1 : 0}"
   health_check {
     protocol = "TCP"
   }
@@ -109,14 +111,16 @@ resource "aws_security_group" "ssh_lb" {
 resource "aws_lb" "ssh" {
   count                            = "${var.use_ssh_routes ? 1 : 0}"
   name                             = "${var.env_name}-ssh-lb"
-  load_balancer_type               = "network"
+  load_balancer_type               = "${var.create_elb_alb ? "application" : "network"}"
   enable_cross_zone_load_balancing = true
   internal                         = "${var.internetless}"
   subnets                          = ["${var.public_subnet_ids}"]
+  security_groups                   = ["${var.create_elb_alb  ? aws_security_group.ssh_lb.id : "" }"]
 }
 
 resource "aws_lb_listener" "ssh" {
-  count             = "${var.use_ssh_routes ? 1 : 0}"
+  #count             = "${var.use_ssh_routes ? 1 : 0}"
+  count                            = "${var.use_ssh_routes  * var.create_elb_nlb }"
   load_balancer_arn = "${aws_lb.ssh.arn}"
   port              = 2222
   protocol          = "TCP"
@@ -128,7 +132,10 @@ resource "aws_lb_listener" "ssh" {
 }
 
 resource "aws_lb_target_group" "ssh" {
-  count    = "${var.use_ssh_routes ? 1 :0}"
+  #count    = "${var.use_ssh_routes ? 1 :0}"
+  #count                            = "${var.create_elb_nlb ? 1 : 0}"
+  count    = "${var.use_ssh_routes  * var.create_elb_nlb }"
+
   name     = "${var.env_name}-ssh-tg"
   port     = 2222
   protocol = "TCP"
@@ -142,7 +149,8 @@ resource "aws_lb_target_group" "ssh" {
 # TCP Load Balancer
 
 locals {
-  tcp_port_count = "${var.use_tcp_routes ? 10 : 0}"
+  tcp_port_count_for_sg = "${var.use_tcp_routes ? 10 : 0}"
+  tcp_port_count = "${var.use_tcp_routes && var.create_elb_nlb ? 10 : 0}"
 }
 
 resource "aws_security_group" "tcp_lb" {
@@ -155,7 +163,7 @@ resource "aws_security_group" "tcp_lb" {
     cidr_blocks = ["0.0.0.0/0"]
     protocol    = "tcp"
     from_port   = 1024
-    to_port     = "${1024 + local.tcp_port_count}"
+    to_port     = "${1024 + local.tcp_port_count_for_sg}"
   }
 
   egress {
@@ -171,18 +179,21 @@ resource "aws_security_group" "tcp_lb" {
 resource "aws_lb" "tcp" {
   count                            = "${var.use_tcp_routes ? 1 : 0}"
   name                             = "${var.env_name}-tcp-lb"
-  load_balancer_type               = "network"
+  load_balancer_type               = "${var.create_elb_alb ? "application" : "network"}"
   enable_cross_zone_load_balancing = true
   internal                         = "${var.internetless}"
   subnets                          = ["${var.public_subnet_ids}"]
+  security_groups                   = ["${var.create_elb_alb  ? aws_security_group.tcp_lb.id : "" }"]
 }
 
 resource "aws_lb_listener" "tcp" {
   load_balancer_arn = "${aws_lb.tcp.arn}"
   port              = "${1024 + count.index}"
   protocol          = "TCP"
+  #count             = "${var.create_elb_nlb ? 1 : 0}"
 
   count = "${local.tcp_port_count}"
+  #count       = "${var.use_tcp_routes  * var.create_elb_nlb }"
 
   default_action {
     type             = "forward"

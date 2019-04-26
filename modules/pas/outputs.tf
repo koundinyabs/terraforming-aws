@@ -78,8 +78,8 @@ output "pas_resources_backup_bucket" {
 
 output "web_target_groups" {
   value = [
-    "${aws_lb_target_group.web_80.name}",
-    "${aws_lb_target_group.web_443.name}",
+    "${aws_lb_target_group.web_80.*.name}",
+    "${aws_lb_target_group.web_443.*.name}",
   ]
 }
 
