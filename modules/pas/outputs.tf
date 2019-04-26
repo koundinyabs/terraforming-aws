@@ -99,6 +99,16 @@ output "isoseg_target_groups" {
   ]
 }
 
+
+variable "https_web_key" {
+  type        = "string"
+  default     = ""
+}
+
+variable "https_web_cert" {
+  type        = "string"
+  default     = ""
+}
 # ============== KMS ===========================================================
 
 output "blobstore_kms_key_id" {

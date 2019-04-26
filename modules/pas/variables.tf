@@ -52,6 +52,12 @@ variable "use_ssh_routes" {
 variable "create_backup_pas_buckets" {
   default = false
 }
+variable "create_elb_nlb" {
+  default = true
+}
+variable "create_elb_alb" {
+  default = false
+}
 
 variable "create_versioned_pas_buckets" {
   default = false
@@ -68,7 +74,10 @@ variable "iam_ops_manager_role_name" {
 variable "create_isoseg_resources" {
   default = 0
 }
-
+variable "https_web_chain" {
+  type        = "string"
+  default     = ""
+}
 variable "tags" {
   type = "map"
 }
